@@ -1,45 +1,30 @@
+import openai
+import os
 from flask import Flask, request, jsonify
-import datetime
+
+# Configurar a chave da API da OpenAI
+openai.api_key = "SUA_CHAVE_API_AQUI"
 
 app = Flask(__name__)
 
-@app.route('/assist', methods=['POST'])
-def assist():
-    """
-    Endpoint para interagir com o assistente virtual.
-    O JSON de entrada deve conter:
-      - channel: "whatsapp" ou "atendente"
-      - query: a mensagem do usuário
-    """
-    data = request.get_json()
-    
-    if not data:
-        return jsonify({"error": "Nenhum dado JSON foi enviado."}), 400
-    
-    # Obter os parâmetros do JSON
-    channel = data.get("channel", "").lower()  # Deve ser "whatsapp" ou "atendente"
-    query = data.get("query", "").lower()        # Mensagem do usuário
-    
-    # Validação do canal escolhido
-    if channel not in ["whatsapp", "atendente"]:
-        return jsonify({"error": "O canal deve ser 'whatsapp' ou 'atendente'."}), 400
+@app.route('/chat', methods=['POST'])
+def chat():
+    dados = request.json
+    pergunta = dados.get("mensagem", "")
 
-    # Processamento baseado no canal escolhido
-    if channel == "whatsapp":
-        # Lógica para o chatbot do WhatsApp
-        if "olá" in query or "oi" in query:
-            response = "Olá, seja bem-vindo ao atendimento via WhatsApp! Como posso ajudar?"
-        elif "hora" in query or "horário" in query:
-            response = f"Nosso atendimento via WhatsApp funciona das 9h às 18h. A hora atual é {datetime.datetime.now().strftime('%H:%M:%S')}."
-        else:
-            response = "Desculpe, não entendi sua pergunta via WhatsApp. Poderia reformular?"
-    else:
-        # Lógica para encaminhar para um atendente pessoal
-        response = "Você está sendo encaminhado para um atendente pessoal. Por favor, aguarde um momento..."
-    
-    return jsonify({"response": response})
+    if not pergunta:
+        return jsonify({"erro": "Nenhuma mensagem enviada"}), 400
+
+    try:
+        resposta = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": pergunta}]
+        )
+
+        return jsonify({"resposta": resposta["choices"][0]["message"]["content"]})
+
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False)
